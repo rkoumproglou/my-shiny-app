@@ -1,6 +1,7 @@
 from shiny import App, reactive, render, ui
 import numpy as np
 from scipy.stats import chisquare
+from collections import Counter
 
 # Define segregation models
 models = {
@@ -25,14 +26,13 @@ def test_segregation(observed, ratios):
     
     chi_stat, p_value = chisquare(f_obs=observed, f_exp=expected)
     
-    result = {
+    return {
         'observed': observed.tolist(),
         'expected': expected.tolist(),
         'chi_square_stat': chi_stat,
         'p_value': p_value,
         'best_fit_ratio': ratios.tolist()
     }
-    return result
 
 def compare_models(observed_counts):
     results = []
@@ -48,8 +48,8 @@ def compare_models(observed_counts):
 
 # UI layout
 app_ui = ui.page_fluid(
-    ui.h2("Genetic Segregation Ratio Tester"),
-    ui.input_text("counts", "Enter observed counts (comma-separated)", placeholder="e.g. 90, 30"),
+    ui.h2("Genetic Segregation Tester (Phenotype Input)"),
+    ui.input_text("phenotypes", "Enter phenotypes (comma-separated)", placeholder="e.g. red, red, orange, red"),
     ui.output_ui("result_ui")
 )
 
@@ -59,26 +59,30 @@ def server(input, output, session):
     @reactive.Calc
     def observed_counts():
         try:
-            counts = [int(x.strip()) for x in input.counts().split(",")]
-            return counts
+            values = [x.strip().lower() for x in input.phenotypes().split(",")]
+            count_dict = Counter(values)
+            labels = sorted(count_dict.keys())  # consistent ordering
+            counts = [count_dict[label] for label in labels]
+            return counts, labels
         except Exception:
-            return None
+            return None, None
 
     @output
     @render.ui
     def result_ui():
-        counts = observed_counts()
-        if not counts:
-            return ui.p("Please enter valid comma-separated integers.")
-        
+        counts, labels = observed_counts()
+        if not counts or not labels:
+            return ui.p("Please enter valid comma-separated phenotype values (e.g., red, orange, red).")
+
         result = compare_models(counts)
         if result is None:
-            return ui.p("No model matches the length of the observed data.")
-        
+            return ui.p(f"No genetic model matches the number of phenotype categories: {len(counts)}.")
+
         return ui.panel_well(
             ui.h4(f"Best Fitting Model: {result['model']}"),
-            ui.p(f"Observed: {result['observed']}"),
-            ui.p(f"Expected: {np.round(result['expected'], 2).tolist()}"),
+            ui.p(f"Phenotype Labels: {labels}"),
+            ui.p(f"Observed Counts: {result['observed']}"),
+            ui.p(f"Expected Counts: {np.round(result['expected'], 2).tolist()}"),
             ui.p(f"Chi-square Statistic: {result['chi_square_stat']:.4f}"),
             ui.p(f"P-value: {result['p_value']:.4f}"),
             ui.p(f"Tested Ratio: {result['best_fit_ratio']}")
