@@ -2,8 +2,9 @@ from shiny import App, reactive, render, ui
 import numpy as np
 from scipy.stats import chisquare
 import plotly.graph_objects as go
+from collections import Counter
 
-# Define segregation models
+# Define possible Mendelian models (adjusted for common cases)
 models = {
     "3:1": [3, 1],
     "1:2:1": [1, 2, 1],
@@ -17,6 +18,7 @@ models = {
     "9:6:1": [9, 6, 1]
 }
 
+# Chi-square test function
 def test_segregation(observed, ratios):
     observed = np.array(observed)
     ratios = np.array(ratios)
@@ -35,6 +37,7 @@ def test_segregation(observed, ratios):
     }
     return result
 
+# Function to compare all models and find the best fit model
 def compare_models(observed_counts):
     results = []
     for name, ratio in models.items():
@@ -50,9 +53,9 @@ def compare_models(observed_counts):
 # UI layout
 app_ui = ui.page_fluid(
     ui.h2("Genetic Segregation Ratio Tester"),
-    ui.input_text_area("counts", "Enter observed counts (paste column from Excel, one per line)", placeholder="Paste one observation per line"),
+    ui.input_text_area("counts", "Enter observed phenotypic values (paste one value per line)", placeholder="Paste one observation per line"),
     ui.output_ui("result_ui"),
-    ui.output_ui("plot_ui")  # Change this to a generic output_ui for Plotly rendering
+    ui.output_ui("plot_ui")  # Output plot for the bar graph
 )
 
 # Server logic
@@ -61,9 +64,18 @@ def server(input, output, session):
     @reactive.Calc
     def observed_counts():
         try:
-            # Split the input by newlines and convert to integers
-            counts = [int(x.strip()) for x in input.counts().split("\n") if x.strip()]
-            print("Observed counts:", counts)  # Debugging line
+            # Check if input is not empty
+            if input.counts() is None or input.counts().strip() == "":
+                print("No input provided")  # Debugging line
+                return None
+            
+            # Split the input by newlines, remove extra spaces, and count occurrences of each category
+            raw_data = input.counts().split("\n")
+            cleaned_data = [x.strip().lower() for x in raw_data if x.strip()]
+            
+            # Count occurrences of each unique value
+            counts = Counter(cleaned_data)
+            print("Counts:", counts)  # Debugging line
             return counts
         except Exception as e:
             print("Error in observed_counts:", e)  # Debugging line
@@ -76,7 +88,10 @@ def server(input, output, session):
         if not counts:
             return ui.p("Please enter valid data.")
         
-        result = compare_models(counts)
+        # Convert the counts to a sorted list for comparison
+        sorted_counts = [counts[key] for key in sorted(counts.keys())]
+        
+        result = compare_models(sorted_counts)
         if result is None:
             return ui.p("No model matches the length of the observed data.")
         
@@ -105,14 +120,16 @@ def server(input, output, session):
         if not counts:
             return ui.p("No plot available, please enter valid data.")
         
-        result = compare_models(counts)
+        # Convert counts into sorted list for graphing
+        sorted_counts = [counts[key] for key in sorted(counts.keys())]
+        result = compare_models(sorted_counts)
         if result is None or result['p_value'] < 0.05:
             return ui.p("No plot available for this model as it does not fit well.")
         
-        # Create a bar chart
+        # Create a bar chart for observed vs expected counts
         fig = go.Figure(data=[
-            go.Bar(name="Observed", x=list(range(len(counts))), y=result['observed'], marker=dict(color="blue")),
-            go.Bar(name="Expected", x=list(range(len(result['expected']))), y=result['expected'], marker=dict(color="red"))
+            go.Bar(name="Observed", x=list(sorted(counts.keys())), y=result['observed'], marker=dict(color="blue")),
+            go.Bar(name="Expected", x=list(sorted(counts.keys())), y=result['expected'], marker=dict(color="red"))
         ])
         
         fig.update_layout(
