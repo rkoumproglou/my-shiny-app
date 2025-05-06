@@ -32,7 +32,7 @@ def server(input, output, session):
     @reactive.calc
     def parsed_data():
         lines = input.phenodata().strip().splitlines()
-        cleaned = [line.strip().lower() for line in lines if line.strip()]
+        cleaned = [line.strip().lower() for line in lines]
         return Counter(cleaned)
 
     @reactive.calc
@@ -53,8 +53,9 @@ def server(input, output, session):
         results = []
 
         for name, ratio in matched_models().items():
-            expected = [total * r / sum(ratio) for r in ratio]
-            observed = [obs_counts.get(cat, 0) for cat in sorted_categories]
+            expected = sorted([total * r / sum(ratio) for r in ratio])
+            observed = sorted([obs_counts.get(cat, 0) for cat in sorted_categories])
+            
             if len(observed) != len(expected):
                 continue
             chi2, p = chisquare(f_obs=observed, f_exp=expected)
@@ -70,7 +71,7 @@ def server(input, output, session):
 
         if not matched_models():
             return ui.p("❌ No Mendelian model matches the number of phenotypic categories.")
-
+        print(test_results())
         best = test_results()[0]
         name, chi2, p, obs, exp = best
         return ui.div(
