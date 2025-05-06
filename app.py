@@ -1,193 +1,140 @@
 from shiny import App, ui, render, reactive
-from plotly import graph_objs as go
+import matplotlib.pyplot as plt
+import matplotlib
+import plotly.graph_objs as go
+import pandas as pd
+import numpy as np
+from collections import Counter
+import re
 from scipy.stats import chisquare
-import math
 
-# Define models and expected ratios
+matplotlib.use('Agg')
+
 models = {
-    "3:1": [3, 1],
-    "1:2:1": [1, 2, 1],
-    "9:3:4": [9, 3, 4],
-    "12:3:1": [12, 3, 1],
-    "13:3": [13, 3],
-    "9:7": [9, 7],
-    "15:1": [15, 1],
-    "9:6:1": [9, 6, 1]
+    "3:1": [0.75, 0.25],
+    "1:2:1": [0.25, 0.5, 0.25],
+    "9:3:4": [9/16, 3/16, 4/16],
+    "12:3:1": [12/16, 3/16, 1/16],
+    "13:3": [13/16, 3/16],
+    "9:7": [9/16, 7/16],
+    "15:1": [15/16, 1/16],
+    "9:6:1": [9/16, 6/16, 1/16]
 }
 
-model_definitions = {
-    "3:1": "This occurs when a single gene has one dominant and one recessive allele.",
-    "1:2:1": "This ratio arises when there is incomplete dominance or codominance.",
-    "9:3:4": "The recessive allele of one gene masks the expression of the other gene.",
-    "12:3:1": "The dominant allele of one gene masks the expression of the other gene.",
-    "13:3": "A dominant inhibitor or a homozygous recessive condition suppresses the phenotype.",
-    "9:7": "Both genes must carry at least one dominant allele for the phenotype to be expressed.",
-    "15:1": "A dominant allele in either gene is sufficient to produce the phenotype.",
-    "9:6:1": "Both genes contribute additively to the phenotype."
+model_descriptions = {
+    "3:1": "*3:1 Ratio: This occurs when a single gene has one dominant and one recessive allele. Result: 3 = dominant phenotype, 1 = recessive phenotype.",
+    "1:2:1": "*1:2:1 Ratio: This arises when there is incomplete dominance or codominance. Result: 1 = homozygous dominant, 2 = heterozygous, 1 = homozygous recessive.",
+    "9:3:4": "*Recessive Epistasis (9:3:4): The recessive allele of one gene masks the expression of the other gene.",
+    "12:3:1": "*Dominant Epistasis (12:3:1): The dominant allele of one gene masks the expression of the other gene.",
+    "13:3": "*Dominant and Recessive Epistasis (13:3): A dominant inhibitor or a recessive genotype suppresses the expression of the phenotype.",
+    "9:7": "*Duplicate Recessive Epistasis (9:7): Both genes must carry at least one dominant allele for the phenotype to be expressed.",
+    "15:1": "*Duplicate Dominant Epistasis (15:1): A dominant allele in either gene is sufficient to produce the phenotype.",
+    "9:6:1": "*Polymeric Gene Interaction (9:6:1): Both genes contribute additively to the phenotype."
 }
 
-def parse_input(text_input: str) -> list[int]:
-    # Replace commas with newlines just in case both are used
-    normalized = text_input.replace(",", "\n")
-    # Split by newlines and remove empty lines/spaces
-    lines = [line.strip() for line in normalized.strip().splitlines() if line.strip()]
-    try:
-        counts = [int(value) for value in lines]
-        return counts
-    except ValueError:
-        return []
+def chi_square_test(observed, expected):
+    expected_counts = [sum(observed) * p for p in expected]
+    stat, p = chisquare(f_obs=observed, f_exp=expected_counts)
+    return stat, p
+
+def get_best_model(observed):
+    best_model = None
+    best_p = -1
+    best_stat = None
+    for model, expected in models.items():
+        if len(expected) == len(observed):
+            stat, p = chi_square_test(observed, expected)
+            if p > best_p:
+                best_model = model
+                best_p = p
+                best_stat = stat
+    return best_model, best_stat, best_p
 
 app_ui = ui.page_fluid(
-    ui.panel_title("Genetic Segregation Model Fit"),
-    ui.input_text_area("observed", "Paste Observed Counts (comma-separated or Excel column)", rows=5, placeholder="e.g. 100, 35, 15"),
-    ui.output_ui("results")
+    ui.panel_title("Genetic Segregation Analyzer"),
+    ui.layout_sidebar(
+        ui.panel_sidebar(
+            ui.input_text_area("observed", "Paste Observed Data (counts or phenotype names)",
+                               placeholder="e.g. red\nred\nwhite\nred"),
+            ui.input_action_button("analyze", "Analyze")
+        ),
+        ui.panel_main(
+            ui.output_ui("results"),
+            ui.output_plot("bar_plot")
+        )
+    )
 )
 
 def server(input, output, session):
-    @reactive.Calc
-    def best_model():
-        observed = parse_input(input.observed())
-        if not observed:
-            return None
 
-        total = sum(observed)
-        best_p = -1
-        best_fit = None
-        best_expected = []
-        stats_summary = ""
+    @reactive.event(input.analyze)
+    def analyze_data():
+        input_str = input.observed().strip()
+        normalized_input = re.sub(r'[\t\r]+', '\n', input_str)
+        lines = [line.strip() for line in normalized_input.split('\n') if line.strip()]
 
-        for name, ratio in models.items():
-            factor = total / sum(ratio)
-            expected = [r * factor for r in ratio]
-            if len(expected) != len(observed):
-                continue
-            stat, p = chisquare(f_obs=observed, f_exp=expected)
-            if p > best_p:
-                best_p = p
-                best_fit = name
-                best_expected = expected
-                stats_summary = f"Chi-square: {stat:.2f}, p-value: {p:.4f}"
+        if all(re.match(r'^[a-zA-Z0-9 _-]+$', item) for item in lines):
+            counter = Counter(lines)
+            phenotype_labels = list(counter.keys())
+            observed_counts = list(counter.values())
+        else:
+            normalized_input = re.sub(r'[\n\t]+', ',', input_str)
+            normalized_input = re.sub(r'\s*,\s*', ',', normalized_input)
+            observed_counts = list(map(int, normalized_input.split(',')))
+            phenotype_labels = [f"Class {i+1}" for i in range(len(observed_counts))]
 
-        return {
-            "model": best_fit,
-            "p": best_p,
-            "expected": best_expected,
-            "observed": observed,
-            "stats": stats_summary
-        }
+        best_model, best_stat, best_p = get_best_model(observed_counts)
+
+        result_items = []
+        if best_p > 0.05:
+            result_items.append(ui.h4("Best-Fit Model Report", style="background-color: lightgreen; padding: 0.5em;"))
+            result_items.append(ui.card(
+                ui.h5(f"The observed ratio does not significantly deviate from the expected ratio based on the Chi-square test (p = {best_p:.3f})."),
+                ui.p(f"Best fit model: *{best_model}"),
+                ui.p(model_descriptions[best_model]),
+                ui.p(f"Chi-square statistic = {best_stat:.3f}, p = {best_p:.3f}"),
+                style="box-shadow: 2px 2px 10px rgba(0,0,0,0.2); padding: 1em;"
+            ))
+        else:
+            result_items.append(ui.h4("Best-Fit Model Report", style="background-color: lightgreen; padding: 0.5em;"))
+            result_items.append(ui.card(
+                ui.h5(f"None of the tested models fit the observed segregation pattern (best p = {best_p:.3f})."),
+                ui.p(f"Best attempted model: *{best_model}"),
+                ui.p(f"Chi-square statistic = {best_stat:.3f}, p = {best_p:.3f}"),
+                style="box-shadow: 2px 2px 10px rgba(0,0,0,0.2); padding: 1em;"
+            ))
+
+        return result_items, observed_counts, best_model, best_p, phenotype_labels
 
     @output
     @render.ui
     def results():
-        result = best_model()
-        if not result:
-            return ui.markdown("**Please enter valid observed counts.**")
-
-        interpretation = ""
-        if result["p"] > 0.05:
-            interpretation = (
-                f"<div style='background-color: #d4edda; padding: 10px; border-radius: 5px;'><strong>Best-Fit Model Report</strong></div>"
-                f"<div class='card shadow p-3 mb-3'>"
-                f"<h5><strong>*{result['model']}*</strong> is the best fit model.</h5>"
-                f"<p>The observed ratio does not significantly deviate from the expected ratio based on the Chi-square test, so it is considered consistent with the model.</p>"
-                f"<p>{model_definitions[result['model']]}</p>"
-                f"<p><strong>Statistics:</strong> {result['stats']}</p>"
-                f"</div>"
-            )
-        else:
-            interpretation = (
-                f"<div class='card shadow p-3 mb-3'>"
-                f"<h5><strong>No model adequately explains the observed segregation ratio.</strong></h5>"
-                f"<p>Although the best fit was <strong>*{result['model']}*</strong>, the observed values significantly deviate from the expected values (p = {result['p']:.4f}).</p>"
-                f"<p><strong>Statistics:</strong> {result['stats']}</p>"
-                f"</div>"
-            )
-
-        # Build the graph
-        data = []
-        categories = [f"Class {i+1}" for i in range(len(result["observed"]))]
-        bar_width = 0.35
-        x = list(range(len(categories)))
-
-        data.append(go.Bar(
-            x=[i - bar_width/2 for i in x],
-            y=result["observed"],
-            name="Observed",
-            marker=dict(color="rgba(55, 83, 109, 0.7)"),
-            width=bar_width
-        ))
-
-        data.append(go.Bar(
-            x=[i + bar_width/2 for i in x],
-            y=result["expected"],
-            name="Expected" + (f" ({result['model']})" if result["p"] > 0.05 else ""),
-            marker=dict(color="rgba(26, 118, 255, 0.7)"),
-            width=bar_width
-        ))
-
-        layout = go.Layout(
-            title="Observed vs Expected Counts",
-            xaxis=dict(title="Phenotypic Classes", tickvals=x, ticktext=categories),
-            yaxis=dict(title="Count"),
-            barmode='overlay',
-            bargap=0.2,
-            showlegend=True,
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            margin=dict(l=40, r=40, t=40, b=40),
-            legend=dict(bgcolor='rgba(255,255,255,0.5)', bordercolor='rgba(0,0,0,0.1)', borderwidth=1),
-        )
-
-        fig = go.Figure(data=data, layout=layout)
-        fig.update_layout(
-            shapes=[dict(type='rect', xref='paper', yref='paper',
-                         x0=0, y0=0, x1=1, y1=1,
-                         line=dict(width=0), fillcolor='rgba(255,255,255,0)', layer='below')]
-        )
-
-        return ui.div(
-            ui.HTML(interpretation),
-            ui.output_plot("plot")
-        )
+        result, _, _, _, _ = analyze_data()
+        return result
 
     @output
     @render.plot
-    def plot():
-        result = best_model()
-        if not result:
-            return
+    def bar_plot():
+        _, observed_counts, best_model, best_p, phenotype_labels = analyze_data()
+        expected = models[best_model]
+        expected_counts = [sum(observed_counts) * p for p in expected]
 
-        categories = [f"Class {i+1}" for i in range(len(result["observed"]))]
-        bar_width = 0.35
-        x = list(range(len(categories)))
+        x = np.arange(len(observed_counts))
+        width = 0.35
 
-        fig = go.Figure()
-        fig.add_bar(
-            x=[i - bar_width/2 for i in x],
-            y=result["observed"],
-            name="Observed",
-            marker_color="rgba(55, 83, 109, 0.7)",
-            width=bar_width
-        )
-        fig.add_bar(
-            x=[i + bar_width/2 for i in x],
-            y=result["expected"],
-            name="Expected" + (f" ({result['model']})" if result["p"] > 0.05 else ""),
-            marker_color="rgba(26, 118, 255, 0.7)",
-            width=bar_width
-        )
-        fig.update_layout(
-            title="Observed vs Expected Counts",
-            xaxis=dict(title="Phenotypic Classes", tickvals=x, ticktext=categories),
-            yaxis=dict(title="Count"),
-            barmode='overlay',
-            bargap=0.2,
-            showlegend=True,
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            margin=dict(l=40, r=40, t=40, b=40),
-            legend=dict(bgcolor='rgba(255,255,255,0.5)', bordercolor='rgba(0,0,0,0.1)', borderwidth=1),
-        )
+        fig, ax = plt.subplots()
+        rects1 = ax.bar(x - width/2, observed_counts, width, label='Observed', color='skyblue')
+        rects2 = ax.bar(x + width/2, expected_counts, width, label=f'Expected ({best_model}*)' if best_p > 0.05 else 'Expected', color='orange')
+
+        ax.set_ylabel('Counts')
+        ax.set_title('Observed vs Expected Segregation')
+        ax.set_xticks(x)
+        ax.set_xticklabels(phenotype_labels)
+        ax.legend()
+        fig.patch.set_facecolor('white')
+        fig.subplots_adjust(bottom=0.2)
+        fig.tight_layout()
+
         return fig
 
 app = App(app_ui, server)
