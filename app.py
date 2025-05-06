@@ -50,7 +50,7 @@ def compare_models(observed_counts):
 # UI layout
 app_ui = ui.page_fluid(
     ui.h2("Genetic Segregation Ratio Tester"),
-    ui.input_textarea("counts", "Enter observed counts (paste column from Excel, one per line)", placeholder="Paste one observation per line"),
+    ui.input_text_area("counts", "Enter observed counts (paste column from Excel, one per line)", placeholder="Paste one observation per line"),
     ui.output_ui("result_ui"),
     ui.output_plotly("plot")  # Use output_plotly for Plotly charts
 )
