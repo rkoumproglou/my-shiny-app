@@ -41,10 +41,9 @@ def test_segregation(observed, ratios):
 def compare_models(observed_counts):
     results = []
     for name, ratio in models.items():
-        if len(ratio) == len(observed_counts):
-            result = test_segregation(observed_counts, ratio)
-            result['model'] = name
-            results.append(result)
+        result = test_segregation(observed_counts, ratio)
+        result['model'] = name
+        results.append(result)
     if not results:
         return None
     best_result = max(results, key=lambda x: x['p_value'])
