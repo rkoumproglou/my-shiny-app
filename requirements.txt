@@ -5,3 +5,5 @@ plotly
 pandas
 ridgeplot
 plotnine
+numpy
+scipy
