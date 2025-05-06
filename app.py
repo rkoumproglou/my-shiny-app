@@ -87,50 +87,46 @@ def server(input, output, session):
         
         # Determine p-value interpretation
         if result['p_value'] < 0.05:
-            interpretation = f"The observed ratio does not significantly deviate from the expected ratio based on the Chi-square test, so it is considered consistent with the best fit model {result['model']}."
-        else:
-            interpretation = "No model explains the observed segregation ratio based on the Chi-square test."
-        
-        # Construct the output
-        output = ui.panel_well(
-            ui.h4("Best-Fit Model Report", style="background-color: lightgreen; padding: 10px;"),
-            ui.p(interpretation),
-            ui.p(f"Best Fit Model: {result['model']}"),
-            ui.p(f"Chi-square Statistic: {result['chi_square_stat']:.4f}"),
-            ui.p(f"P-value: {result['p_value']:.4f}"),
-            ui.p(f"Tested Ratio: {result['best_fit_ratio']}")
-        )
-
-        # Add graph if p-value is greater than 0.05
-        if result['p_value'] >= 0.05:
-            output += ui.card(
-                ui.plotly({
-                    "data": [
-                        go.Bar(
-                            x=unique_phenotypes,
-                            y=result['observed'],
-                            name='Observed',
-                            marker=dict(color="rgb(204,204,255)")
-                        ),
-                        go.Bar(
-                            x=unique_phenotypes,
-                            y=result['expected'],
-                            name='Expected',
-                            marker=dict(color="rgb(255,204,204)")
-                        ),
-                    ],
-                    "layout": {
-                        "title": "Observed vs. Expected Distribution",
-                        "showlegend": True,
-                        "xaxis": {"title": "Phenotypes"},
-                        "yaxis": {"title": "Counts"},
-                        "bargap": 0.2  # To prevent the bars from touching
-                    }
-                }),
-                style="box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);"
+            return ui.panel_well(
+                ui.h4("Best-Fit Model Report", style="background-color: lightgreen; padding: 10px;"),
+                ui.p(f"The observed ratio does not significantly deviate from the expected ratio based on the Chi-square test, so it is considered consistent with the best fit model {result['model']}"),
+                ui.p(f"Chi-square Statistic: {result['chi_square_stat']:.4f}"),
+                ui.p(f"P-value: {result['p_value']:.4f}"),
+                ui.p(f"Tested Ratio: {result['best_fit_ratio']}"),
+                ui.card(
+                    ui.plotly({
+                        "data": [
+                            go.Bar(
+                                x=unique_phenotypes,
+                                y=result['observed'],
+                                name='Observed',
+                                marker=dict(color="rgb(204,204,255)")
+                            ),
+                            go.Bar(
+                                x=unique_phenotypes,
+                                y=result['expected'],
+                                name='Expected',
+                                marker=dict(color="rgb(255,204,204)")
+                            ),
+                        ],
+                        "layout": {
+                            "title": "Observed vs. Expected Distribution",
+                            "showlegend": True,
+                            "xaxis": {"title": "Phenotypes"},
+                            "yaxis": {"title": "Counts"}
+                        }
+                    }),
+                    style="box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);"
+                )
             )
-        
-        return output
+        else:
+            return ui.panel_well(
+                ui.h4("Best-Fit Model Report", style="background-color: lightgreen; padding: 10px;"),
+                ui.p("No model explains the observed segregation ratio based on the Chi-square test."),
+                ui.p(f"Chi-square Statistic: {result['chi_square_stat']:.4f}"),
+                ui.p(f"P-value: {result['p_value']:.4f}"),
+                ui.p(f"Tested Ratio: {result['best_fit_ratio']}")
+            )
 
 # Create app
 app = App(app_ui, server)
