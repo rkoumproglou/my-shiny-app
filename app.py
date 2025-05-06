@@ -101,4 +101,63 @@ def server(input, output, session):
             ui.p(f"Tested Ratio: {result['best_fit_ratio']}")
         )
 
-        # Add
+        # Add graph if p-value is greater than 0.05
+        if result['p_value'] >= 0.05:
+            output += ui.card(
+                ui.plotly({
+                    "data": [
+                        go.Bar(
+                            x=unique_phenotypes,
+                            y=result['observed'],
+                            name='Observed',
+                            marker=dict(color="rgb(204,204,255)")
+                        ),
+                        go.Bar(
+                            x=unique_phenotypes,
+                            y=result['expected'],
+                            name='Expected',
+                            marker=dict(color="rgb(255,204,204)")
+                        ),
+                    ],
+                    "layout": {
+                        "title": "Observed vs. Expected Distribution",
+                        "showlegend": True if result['p_value'] >= 0.05 else False,  # Show legend only when p-value > 0.05
+                        "xaxis": {"title": "Phenotypes"},
+                        "yaxis": {"title": "Counts"},
+                        "bargap": 0.3  # To prevent the bars from touching each other
+                    }
+                }),
+                style="box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);"
+            )
+
+            # Explanation of each model for the best fit model
+            output += ui.p(f"* {result['model']}* Model Explanation:"),
+            output += ui.p(
+                "* **3:1 Ratio**: This occurs when a single gene has one dominant and one recessive allele. F₂ Result: 3 = dominant phenotype, 1 = recessive phenotype. Genotypic breakdown: 1 homozygous dominant, 2 heterozygous, 1 homozygous recessive."
+            )
+            output += ui.p(
+                "* **1:2:1 Ratio**: This ratio arises when there is incomplete dominance or codominance. F₂ Result: 1 = homozygous dominant phenotype, 2 = heterozygous intermediate or combined phenotype, 1 = homozygous recessive phenotype."
+            )
+            output += ui.p(
+                "* **Recessive Epistasis (9:3:4)**: The recessive allele of one gene masks the expression of the other gene. 9 = both dominant alleles present → first phenotype, 3 = one dominant allele from the second gene only → second phenotype, 4 = homozygous recessive in the epistatic gene → third phenotype."
+            )
+            output += ui.p(
+                "* **Dominant Epistasis (12:3:1)**: The dominant allele of one gene masks the expression of the other gene. 12 = presence of dominant epistatic allele → first phenotype, 3 = non-epistatic gene expressed in absence of dominant epistasis → second phenotype, 1 = both genes homozygous recessive → third phenotype."
+            )
+            output += ui.p(
+                "* **Dominant and Recessive (Inhibitory) Epistasis (13:3)**: A phenotype appears either when a dominant inhibitor is present or when the other gene is homozygous recessive. 13 = phenotype suppressed due to dominant or recessive epistasis, 3 = phenotype expressed only when inhibitor is absent and the second gene has at least one dominant allele."
+            )
+            output += ui.p(
+                "* **Duplicate Recessive Epistasis (9:7)**: Both genes must carry at least one dominant allele for the phenotype to be expressed. 9 = phenotype expressed, 7 = any homozygous recessive condition in either gene blocks expression."
+            )
+            output += ui.p(
+                "* **Duplicate Dominant Epistasis (15:1)**: A dominant allele in either gene is sufficient to produce the phenotype. 15 = phenotype expressed when at least one dominant allele is present in either gene, 1 = alternate phenotype expressed only in the double recessive condition."
+            )
+            output += ui.p(
+                "* **Polymeric Gene Interaction (9:6:1)**: Both genes contribute additively to the phenotype, and their combined presence produces an enhanced or new trait. 9 = both dominant alleles present → enhanced phenotype, 6 = only one dominant allele present → intermediate phenotype, 1 = both genes recessive → basic phenotype."
+            )
+
+        return output
+
+# Create app
+app = App(app_ui, server)
