@@ -46,10 +46,17 @@ def test_segregation(observed, ratios):
 # Function to compare all models and find the best fit model
 def compare_models(observed_counts):
     results = []
+    num_classes = len(observed_counts)
     for name, ratio in models.items():
-        result = test_segregation(observed_counts, ratio)
-        result['model'] = name
-        results.append(result)
+        if len(ratio) != num_classes:
+            continue  # Skip models with a different number of classes
+        try:
+            result = test_segregation(observed_counts, ratio)
+            result['model'] = name
+            results.append(result)
+        except Exception as e:
+            print(f"Error testing model {name}: {e}")
+            continue
     if not results:
         return None
     best_result = max(results, key=lambda x: x['p_value'])
