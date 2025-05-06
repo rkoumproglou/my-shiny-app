@@ -4,7 +4,7 @@ from scipy.stats import chisquare
 import plotly.graph_objects as go
 from collections import Counter
 
-# Define possible Mendelian models (adjusted for common cases)
+# Define Mendelian models
 models = {
     "3:1": [3, 1],
     "1:2:1": [1, 2, 1],
@@ -22,18 +22,11 @@ models = {
 def test_segregation(observed, ratios):
     observed = np.array(observed)
     ratios = np.array(ratios)
-    
     total = np.sum(observed)
-    
-    # Reshape the ratios to match the observed counts' length
     expected = (ratios / np.sum(ratios)) * total
-    
-    # Ensure that both observed and expected arrays have the same length
     if len(observed) != len(expected):
         raise ValueError("The length of observed and expected counts must match.")
-    
     chi_stat, p_value = chisquare(f_obs=observed, f_exp=expected)
-    
     result = {
         'observed': observed.tolist(),
         'expected': expected.tolist(),
@@ -43,13 +36,12 @@ def test_segregation(observed, ratios):
     }
     return result
 
-# Function to compare all models and find the best fit model
-def compare_models(observed_counts):
+# Compare all models and find best fit for the selected number of classes
+def compare_models(observed_counts, num_classes):
     results = []
-    num_classes = len(observed_counts)
     for name, ratio in models.items():
         if len(ratio) != num_classes:
-            continue  # Skip models with a different number of classes
+            continue
         try:
             result = test_segregation(observed_counts, ratio)
             result['model'] = name
@@ -65,32 +57,26 @@ def compare_models(observed_counts):
 # UI layout
 app_ui = ui.page_fluid(
     ui.h2("Genetic Segregation Ratio Tester"),
+    ui.input_select("num_classes", "Number of phenotypic classes", choices=["2", "3", "4"], selected="2"),
     ui.input_text_area("counts", "Enter observed phenotypic values (paste one value per line)", placeholder="Paste one observation per line"),
     ui.output_ui("result_ui"),
-    ui.output_ui("plot_ui")  # Output plot for the bar graph
+    ui.output_ui("plot_ui")
 )
 
 # Server logic
 def server(input, output, session):
-    
+
     @reactive.Calc
     def observed_counts():
         try:
-            # Check if input is not empty
             if input.counts() is None or input.counts().strip() == "":
-                print("No input provided")  # Debugging line
                 return None
-            
-            # Split the input by newlines, remove extra spaces, and count occurrences of each category
             raw_data = input.counts().split("\n")
             cleaned_data = [x.strip().lower() for x in raw_data if x.strip()]
-            
-            # Count occurrences of each unique value
             counts = Counter(cleaned_data)
-            print("Counts:", counts)  # Debugging line
             return counts
         except Exception as e:
-            print("Error in observed_counts:", e)  # Debugging line
+            print("Error in observed_counts:", e)
             return None
 
     @output
@@ -99,20 +85,20 @@ def server(input, output, session):
         counts = observed_counts()
         if not counts:
             return ui.p("Please enter valid data.")
-        
-        # Convert the counts to a sorted list for comparison
-        sorted_counts = [counts[key] for key in sorted(counts.keys())]
-        
-        result = compare_models(sorted_counts)
+
+        sorted_keys = sorted(counts.keys())
+        sorted_counts = [counts[key] for key in sorted_keys]
+        num_classes = int(input.num_classes())
+        if len(sorted_counts) != num_classes:
+            return ui.p(f"Your input includes {len(sorted_counts)} classes, but you selected {num_classes}. Please adjust.")
+
+        result = compare_models(sorted_counts, num_classes)
         if result is None:
             return ui.p("No model matches the length of the observed data.")
-        
-        # Best-fit model message
-        best_fit_msg = "No model explains the observed segregation" if result['p_value'] < 0.05 else f"The best fit model is {result['model']}."
 
-        # Explanation based on p-value
+        best_fit_msg = "No model explains the observed segregation" if result['p_value'] < 0.05 else f"The best fit model is {result['model']}."
         explanation = "The observed ratio does not significantly deviate from the expected ratio." if result['p_value'] > 0.05 else "The observed ratio significantly deviates from the expected ratio."
-        
+
         return ui.panel_well(
             ui.h4("Best-Fit Model Report"),
             ui.p(best_fit_msg),
@@ -124,42 +110,38 @@ def server(input, output, session):
             ui.p(f"Tested Ratio: {result['best_fit_ratio']}"),
             ui.p(f"* {result['model']} ratio: {models[result['model']]}")
         )
-    
+
     @output
     @render.ui
     def plot_ui():
         counts = observed_counts()
         if not counts:
             return ui.p("No plot available, please enter valid data.")
-        
-        # Convert counts into sorted list for graphing
-        sorted_counts = [counts[key] for key in sorted(counts.keys())]
-        result = compare_models(sorted_counts)
+
+        sorted_keys = sorted(counts.keys())
+        sorted_counts = [counts[key] for key in sorted_keys]
+        num_classes = int(input.num_classes())
+        if len(sorted_counts) != num_classes:
+            return ui.p("Mismatch between selected number of classes and input data.")
+
+        result = compare_models(sorted_counts, num_classes)
         if result is None or result['p_value'] < 0.05:
             return ui.p("No plot available for this model as it does not fit well.")
-        
-        # Create a bar chart for observed vs expected counts
+
         fig = go.Figure(data=[
-            go.Bar(name="Observed", x=list(sorted(counts.keys())), y=result['observed'], marker=dict(color="blue")),
-            go.Bar(name="Expected", x=list(sorted(counts.keys())), y=result['expected'], marker=dict(color="red"))
+            go.Bar(name="Observed", x=sorted_keys, y=result['observed'], marker=dict(color="blue")),
+            go.Bar(name="Expected", x=sorted_keys, y=result['expected'], marker=dict(color="red"))
         ])
-        
+
         fig.update_layout(
-            barmode='group',  # Bars within each category won't touch each other
+            barmode='group',
             title="Observed vs Expected Counts",
             xaxis_title="Phenotypic Class",
-            yaxis_title="Count",
-            legend_title="Model",
-            legend=dict(
-                itemsizing='constant',
-                traceorder='normal',
-                font=dict(size=12)
-            )
+            yaxis_title="Count"
         )
 
-        # Embed Plotly graph into HTML div
         plot_html = fig.to_html(full_html=False)
-        return ui.HTML(plot_html)  # Use ui.HTML to embed the plotly graph as HTML
+        return ui.HTML(plot_html)
 
 # Create app
 app = App(app_ui, server)
