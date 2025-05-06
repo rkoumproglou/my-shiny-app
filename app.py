@@ -77,7 +77,7 @@ app_ui = ui.page_fluid(
 # Server logic
 def server(input, output, session):
 
-  @reactive.Calc
+@reactive.Calc
 def observed_counts():
     try:
         raw_data = input.counts().split("\n")
