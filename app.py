@@ -105,29 +105,7 @@ def server(input, output, session):
         # Add graph if p-value is greater than 0.05
         if result['p_value'] >= 0.05:
             output += ui.card(
-                ui.plotly({
-                    "data": [
-                        go.Bar(
-                            x=unique_phenotypes,
-                            y=result['observed'],
-                            name='Observed',
-                            marker=dict(color="rgb(204,204,255)")
-                        ),
-                        go.Bar(
-                            x=unique_phenotypes,
-                            y=result['expected'],
-                            name='Expected',
-                            marker=dict(color="rgb(255,204,204)")
-                        ),
-                    ],
-                    "layout": {
-                        "title": "Observed vs. Expected Distribution",
-                        "showlegend": True if result['p_value'] >= 0.05 else False,  # Show legend only when p-value > 0.05
-                        "xaxis": {"title": "Phenotypes"},
-                        "yaxis": {"title": "Counts"},
-                        "bargap": 0.3  # To prevent the bars from touching each other
-                    }
-                }),
+                ui.plotlyOutput("graph", height="400px"), 
                 style="box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);"
             )
 
@@ -159,6 +137,40 @@ def server(input, output, session):
             )
 
         return output
+
+    @output
+    @render.plotly
+    def graph():
+        counts, unique_phenotypes = observed_counts()
+        if not counts:
+            return go.Figure()
+
+        result = compare_models(counts)
+        if result is None or result['p_value'] >= 0.05:
+            return go.Figure(
+                data=[
+                    go.Bar(
+                        x=unique_phenotypes,
+                        y=result['observed'],
+                        name='Observed',
+                        marker=dict(color="rgb(204,204,255)")
+                    ),
+                    go.Bar(
+                        x=unique_phenotypes,
+                        y=result['expected'],
+                        name='Expected',
+                        marker=dict(color="rgb(255,204,204)")
+                    ),
+                ],
+                layout=go.Layout(
+                    title="Observed vs. Expected Distribution",
+                    showlegend=True,
+                    xaxis={"title": "Phenotypes"},
+                    yaxis={"title": "Counts"},
+                    bargap=0.3  # To prevent the bars from touching each other
+                )
+            )
+        return go.Figure()
 
 # Create app
 app = App(app_ui, server)
