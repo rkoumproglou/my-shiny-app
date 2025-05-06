@@ -1,7 +1,6 @@
 from shiny import App, reactive, render, ui
 import numpy as np
 import plotly.graph_objects as go
-from plotly.graph_objects import Figure
 from scipy.stats import chisquare
 
 # Define segregation models
@@ -19,39 +18,47 @@ models = {
 }
 
 def test_segregation(observed, ratios):
-    observed = np.array(observed)
-    ratios = np.array(ratios)
-    
-    total = np.sum(observed)
-    expected = ratios / np.sum(ratios) * total
-    
-    chi_stat, p_value = chisquare(f_obs=observed, f_exp=expected)
-    
-    result = {
-        'observed': observed.tolist(),
-        'expected': expected.tolist(),
-        'chi_square_stat': chi_stat,
-        'p_value': p_value,
-        'best_fit_ratio': ratios.tolist()
-    }
-    return result
+    try:
+        observed = np.array(observed)
+        ratios = np.array(ratios)
+
+        total = np.sum(observed)
+        expected = ratios / np.sum(ratios) * total
+
+        chi_stat, p_value = chisquare(f_obs=observed, f_exp=expected)
+
+        return {
+            'observed': observed.tolist(),
+            'expected': expected.tolist(),
+            'chi_square_stat': chi_stat,
+            'p_value': p_value,
+            'best_fit_ratio': ratios.tolist()
+        }
+    except Exception as e:
+        print(f"Error in test_segregation: {e}")
+        return None
 
 def compare_models(observed_counts):
-    results = []
-    for name, ratio in models.items():
-        if len(ratio) == len(observed_counts):
-            result = test_segregation(observed_counts, ratio)
-            result['model'] = name
-            results.append(result)
-    if not results:
+    try:
+        results = []
+        for name, ratio in models.items():
+            if len(ratio) == len(observed_counts):
+                result = test_segregation(observed_counts, ratio)
+                if result:  # Ensure that the result is not None
+                    result['model'] = name
+                    results.append(result)
+        if not results:
+            return None
+        best_result = max(results, key=lambda x: x['p_value'])
+        return best_result
+    except Exception as e:
+        print(f"Error in compare_models: {e}")
         return None
-    best_result = max(results, key=lambda x: x['p_value'])
-    return best_result
 
 # UI layout with CSS for drop shadow
 app_ui = ui.page_fluid(
     ui.h2("Genetic Segregation Ratio Tester"),
-    ui.input_text_area("counts", "Paste phenotypic values (one per line)", placeholder="e.g.\nred\nred\nred\norange\norange"),
+    ui.input_textarea("counts", "Paste phenotypic values (one per line)", placeholder="e.g.\nred\nred\nred\norange\norange"),
     ui.output_ui("result_ui"),
     ui.tags.style("""
         .graph-container {
@@ -72,7 +79,8 @@ def server(input, output, session):
             unique_phenotypes = set(phenotypes)
             counts = [phenotypes.count(phenotype) for phenotype in unique_phenotypes]
             return counts, list(unique_phenotypes)
-        except Exception:
+        except Exception as e:
+            print(f"Error in observed_counts: {e}")
             return None, None
 
     @output
