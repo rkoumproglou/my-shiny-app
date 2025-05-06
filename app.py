@@ -46,4 +46,41 @@ def server(input, output, session):
 
     @reactive.calc
     def test_results():
-        obs
+        obs_counts = parsed_data()
+        total = sum(obs_counts.values())
+        sorted_categories = sorted(obs_counts.keys())
+
+        results = []
+
+        for name, ratio in matched_models().items():
+            expected = [total * r / sum(ratio) for r in ratio]
+            observed = [obs_counts.get(cat, 0) for cat in sorted_categories]
+            if len(observed) != len(expected):
+                continue
+            chi2, p = chisquare(f_obs=observed, f_exp=expected)
+            results.append((name, chi2, p, observed, expected))
+
+        return sorted(results, key=lambda x: -x[2])  # sort by p-value desc
+
+    @output
+    @render.ui
+    def result_ui():
+        if not parsed_data():
+            return ui.p("Paste data to begin.")
+
+        if not matched_models():
+            return ui.p("❌ No Mendelian model matches the number of phenotypic categories.")
+
+        best = test_results()[0]
+        name, chi2, p, obs, exp = best
+        return ui.div(
+            ui.h4("✔️ Best-Fitting Mendelian Model"),
+            ui.p(f"Model: **{name}**"),
+            ui.p(f"Observed counts: {obs}"),
+            ui.p(f"Expected counts: {[round(e, 2) for e in exp]}"),
+            ui.p(f"Chi-square statistic: {chi2:.4f}"),
+            ui.p(f"P-value: {p:.4f}")
+        )
+
+# Create and run the app
+app = App(app_ui, server)
