@@ -76,18 +76,17 @@ app_ui = ui.page_fluid(
 
 # Server logic
 def server(input, output, session):
-
- @reactive.Calc
- def observed_counts():
-    try:
-        raw_data = input.counts().split("\n")
-        cleaned_data = [x.strip().lower() for x in raw_data if x.strip()]
-        counts = Counter(cleaned_data)
-        print("Observed phenotypes:", counts)  # Debug
-        return counts
-    except Exception as e:
-        print("Error parsing input:", e)
-        return None
+    @reactive.Calc
+    def observed_counts():
+        try:
+            raw_data = input.counts().split("\n")
+            cleaned_data = [x.strip().lower() for x in raw_data if x.strip()]
+            counts = Counter(cleaned_data)
+            print("Observed phenotypes:", counts)  # Debug
+            return counts
+        except Exception as e:
+            print("Error parsing input:", e)
+            return None
 
     @output
     @render.ui
