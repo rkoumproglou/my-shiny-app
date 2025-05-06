@@ -24,7 +24,13 @@ def test_segregation(observed, ratios):
     ratios = np.array(ratios)
     
     total = np.sum(observed)
-    expected = ratios / np.sum(ratios) * total
+    
+    # Reshape the ratios to match the observed counts' length
+    expected = (ratios / np.sum(ratios)) * total
+    
+    # Ensure that both observed and expected arrays have the same length
+    if len(observed) != len(expected):
+        raise ValueError("The length of observed and expected counts must match.")
     
     chi_stat, p_value = chisquare(f_obs=observed, f_exp=expected)
     
