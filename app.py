@@ -2,6 +2,7 @@ from shiny import App, reactive, render, ui
 import numpy as np
 from scipy.stats import chisquare
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Define segregation models
 models = {
@@ -52,7 +53,7 @@ app_ui = ui.page_fluid(
     ui.h2("Genetic Segregation Ratio Tester"),
     ui.input_text_area("counts", "Enter observed counts (paste column from Excel, one per line)", placeholder="Paste one observation per line"),
     ui.output_ui("result_ui"),
-    ui.output_html("plot")  # Use output_html for rendering Plotly figures
+    ui.output_plotly("plot")  # Use renderPlotly for Plotly graph rendering
 )
 
 # Server logic
@@ -97,15 +98,15 @@ def server(input, output, session):
         )
     
     @output
-    @render.html
+    @render.plotly
     def plot():
         counts = observed_counts()
         if not counts:
-            return ""
+            return {}
 
         result = compare_models(counts)
         if result is None or result['p_value'] < 0.05:
-            return ""
+            return {}
 
         # Create a bar chart
         fig = go.Figure(data=[
@@ -126,8 +127,7 @@ def server(input, output, session):
             )
         )
 
-        # Convert Plotly figure to HTML and return
-        return fig.to_html(full_html=False)
+        return fig  # Return Plotly figure directly for rendering
 
 # Create app
 app = App(app_ui, server)
