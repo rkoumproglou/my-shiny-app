@@ -53,7 +53,7 @@ app_ui = ui.page_fluid(
     ui.h2("Genetic Segregation Ratio Tester"),
     ui.input_text_area("counts", "Enter observed counts (paste column from Excel, one per line)", placeholder="Paste one observation per line"),
     ui.output_ui("result_ui"),
-    ui.output_plotly("plot")  # Use renderPlotly for Plotly graph rendering
+    ui.output_ui("plot_ui")  # Change this to a generic output_ui for Plotly rendering
 )
 
 # Server logic
@@ -98,16 +98,16 @@ def server(input, output, session):
         )
     
     @output
-    @render.plotly
-    def plot():
+    @render.ui
+    def plot_ui():
         counts = observed_counts()
         if not counts:
-            return {}
-
+            return ui.p("No plot available, please enter valid data.")
+        
         result = compare_models(counts)
         if result is None or result['p_value'] < 0.05:
-            return {}
-
+            return ui.p("No plot available for this model as it does not fit well.")
+        
         # Create a bar chart
         fig = go.Figure(data=[
             go.Bar(name="Observed", x=list(range(len(counts))), y=result['observed'], marker=dict(color="blue")),
@@ -127,7 +127,9 @@ def server(input, output, session):
             )
         )
 
-        return fig  # Return Plotly figure directly for rendering
+        # Embed Plotly graph into HTML div
+        plot_html = fig.to_html(full_html=False)
+        return ui.HTML(plot_html)  # Use ui.HTML to embed the plotly graph as HTML
 
 # Create app
 app = App(app_ui, server)
