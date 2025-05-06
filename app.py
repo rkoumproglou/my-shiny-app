@@ -99,6 +99,7 @@ def observed_counts():
         try:
             sorted_keys = sorted(counts.keys())
             sorted_counts = [counts[key] for key in sorted_keys]
+            result = compare_models(sorted_counts)
             selected_class_count = int(input.class_count())
             if len(sorted_counts) != selected_class_count:
                 return ui.p(f"Mismatch: You selected {selected_class_count} classes, but data contains {len(sorted_counts)} unique classes.")
