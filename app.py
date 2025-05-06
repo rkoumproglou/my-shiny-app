@@ -114,3 +114,25 @@ def server(input, output, session):
     def barplot():
         counts = observed_counts()
         if counts is None:
+            return None
+        result = compare_models(counts.values)
+        if result is None:
+            return None
+
+        categories = list(counts.index)
+        df = pd.DataFrame({
+            "Category": categories * 2,
+            "Count": result["observed"] + result["expected"],
+            "Type": ["Observed"] * len(categories) + ["Expected"] * len(categories)
+        })
+
+        return (
+            ggplot(df, aes(x="Category", y="Count", fill="Type"))
+            + geom_bar(stat="identity", position=position_dodge(width=0.8))
+            + labs(title=f"Observed vs Expected Counts ({result['model']})", y="Count")
+            + scale_fill_manual(values=["#0072B2", "#E69F00"])
+            + theme_minimal()
+        )
+
+# Create app
+app = App(app_ui, server)
