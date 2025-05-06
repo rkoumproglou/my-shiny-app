@@ -52,7 +52,7 @@ app_ui = ui.page_fluid(
     ui.h2("Genetic Segregation Ratio Tester"),
     ui.input_text_area("counts", "Enter observed counts (paste column from Excel, one per line)", placeholder="Paste one observation per line"),
     ui.output_ui("result_ui"),
-    ui.output_plotly("plot")  # Use output_plotly for Plotly charts
+    ui.output_plot("plot")  # Use output_plot for Plotly charts
 )
 
 # Server logic
@@ -97,7 +97,7 @@ def server(input, output, session):
         )
     
     @output
-    @render.plotly
+    @render.plot
     def plot():
         counts = observed_counts()
         if not counts:
@@ -130,3 +130,4 @@ def server(input, output, session):
 
 # Create app
 app = App(app_ui, server)
+
