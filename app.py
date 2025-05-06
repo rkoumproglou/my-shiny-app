@@ -50,7 +50,7 @@ def compare_models(observed_counts):
 # UI layout with CSS for drop shadow
 app_ui = ui.page_fluid(
     ui.h2("Genetic Segregation Ratio Tester"),
-    ui.input_textarea("counts", "Paste phenotypic values (one per line)", placeholder="e.g.\nred\nred\nred\norange\norange"),
+    ui.input_text_area("counts", "Paste phenotypic values (one per line)", placeholder="e.g.\nred\nred\nred\norange\norange"),
     ui.output_ui("result_ui"),
     ui.tags.style("""
         .graph-container {
