@@ -2,7 +2,6 @@ from shiny import App, reactive, render, ui
 import numpy as np
 from scipy.stats import chisquare
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 # Define segregation models
 models = {
@@ -64,8 +63,10 @@ def server(input, output, session):
         try:
             # Split the input by newlines and convert to integers
             counts = [int(x.strip()) for x in input.counts().split("\n") if x.strip()]
+            print("Observed counts:", counts)  # Debugging line
             return counts
-        except Exception:
+        except Exception as e:
+            print("Error in observed_counts:", e)  # Debugging line
             return None
 
     @output
