@@ -38,19 +38,26 @@ def test_segregation(observed, ratios):
     }
 
 # Compare all models matching number of classes
-def compare_models(observed_counts, selected_class_count):
+def compare_models(observed_counts):
     results = []
+    num_classes = len(observed_counts)
+    print("Testing models for", num_classes, "classes")  # Debug
+
     for name, ratio in models.items():
-        if len(ratio) != selected_class_count:
-            continue
+        if len(ratio) != num_classes:
+            continue  # Skip models that don't match the observed class count
         try:
             result = test_segregation(observed_counts, ratio)
             result['model'] = name
             results.append(result)
-        except Exception:
+        except Exception as e:
+            print(f"Error testing model {name}: {e}")
             continue
+
     if not results:
         return None
+
+    # Choose the model with the highest p-value
     best_result = max(results, key=lambda x: x['p_value'])
     return best_result
 
@@ -70,17 +77,17 @@ app_ui = ui.page_fluid(
 # Server logic
 def server(input, output, session):
 
-    @reactive.Calc
-    def observed_counts():
-        try:
-            if input.counts() is None or input.counts().strip() == "":
-                return None
-            raw_data = input.counts().split("\n")
-            cleaned_data = [x.strip().lower() for x in raw_data if x.strip()]
-            counts = Counter(cleaned_data)
-            return counts
-        except Exception:
-            return None
+  @reactive.Calc
+def observed_counts():
+    try:
+        raw_data = input.counts().split("\n")
+        cleaned_data = [x.strip().lower() for x in raw_data if x.strip()]
+        counts = Counter(cleaned_data)
+        print("Observed phenotypes:", counts)  # Debug
+        return counts
+    except Exception as e:
+        print("Error parsing input:", e)
+        return None
 
     @output
     @render.ui
