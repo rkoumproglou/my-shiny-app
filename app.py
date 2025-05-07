@@ -20,16 +20,16 @@ MENDELIAN_MODELS = {
 
 # Interpretation text for each model
 MODEL_INTERPRETATIONS = {
-    "3:1": "This pattern suggests a single gene with a dominant and recessive allele. One phenotype appears three times as often as the other, indicating classic Mendelian dominance.",
-    "1:2:1": "This ratio indicates additive gene action in a monohybrid cross, where heterozygotes show an intermediate phenotype.",
-    "12:3:1": "Dominant epistasis occurs when a dominant allele at one locus masks the expression of alleles at another locus, resulting in fewer phenotypic categories than expected.",
-    "9:7": "This pattern is due to duplicate recessive epistasis, where both genes must have at least one dominant allele to produce a specific phenotype.",
-    "15:1": "This is the result of duplicate dominant epistasis. A dominant allele at either of two loci produces the same phenotype, making the unique phenotype very rare.",
-    "9:3:4": "Recessive epistasis involves one gene masking the expression of another, but only when it's homozygous recessive. This gives a characteristic 9:3:4 phenotypic distribution.",
-    "13:3": "This ratio reflects a dominant and recessive interaction, where one dominant allele inhibits the expression of the other gene, leading to suppression of one phenotype.",
-    "9:6:1": "This pattern, also known as polymeric gene interaction, shows additive effects of two genes producing a novel phenotype when both genes contribute equally.",
-    "1:1:1:1": "This suggests independent assortment of two genes with complete dominance, typically seen in a dihybrid test cross.",
-    "9:3:3:1": "A classic dihybrid Mendelian ratio involving two independently assorting genes with complete dominance."
+    "3:1": "The model 3:1 indicates **monogenic dominance**. In this case, a single gene has a dominant allele that masks the effect of a recessive one. This results in three offspring showing the dominant trait for every one showing the recessive trait.",
+    "1:2:1": "The model 1:2:1 indicates **additive gene action**. In this case, one gene with two alleles produces three phenotypes where the heterozygote expresses an intermediate form.",
+    "12:3:1": "The model 12:3:1 indicates **dominant epistasis**. In this case, a dominant allele at one gene locus masks the expression of another gene, reducing the number of phenotypes to three.",
+    "9:7": "The model 9:7 indicates **duplicate recessive epistasis**. In this case, both genes must have at least one dominant allele to produce a specific phenotype, otherwise a common phenotype appears.",
+    "15:1": "The model 15:1 indicates **duplicate dominant epistasis**. In this case, a dominant allele at either of two loci produces the same phenotype, resulting in a very rare unique phenotype.",
+    "9:3:4": "The model 9:3:4 indicates **recessive epistasis**. In this case, one gene suppresses the expression of another gene only when in homozygous recessive form.",
+    "13:3": "The model 13:3 indicates **dominant and recessive (inhibitory) epistasis**. In this case, the presence of one dominant allele inhibits the phenotypic expression of another gene.",
+    "9:6:1": "The model 9:6:1 indicates **polymeric gene interaction**. In this case, two genes contribute equally to a new phenotype, while single gene expressions produce intermediate phenotypes.",
+    "1:1:1:1": "The model 1:1:1:1 indicates **independent assortment of two genes**. In this case, each combination of alleles is equally likely, often seen in a dihybrid test cross.",
+    "9:3:3:1": "The model 9:3:3:1 indicates **independent assortment of two genes with complete dominance**. In this case, the classic Mendelian dihybrid ratio arises from two genes segregating independently."
 }
 
 # Define UI
@@ -76,7 +76,7 @@ def server(input, output, session):
             chi2, p = chisquare(f_obs=observed, f_exp=expected)
             results.append((name, chi2, p, observed, expected))
 
-        return sorted(results, key=lambda x: -x[2])  # sort by p-value desc
+        return sorted(results, key=lambda x: -x[2])
 
     @output
     @render.ui
@@ -91,7 +91,6 @@ def server(input, output, session):
         name, chi2, p, obs, exp = best
         categories = sorted(parsed_data().keys())
 
-        # Create bar plot
         fig = go.Figure()
         fig.add_trace(go.Bar(
             x=categories,
@@ -116,7 +115,7 @@ def server(input, output, session):
         return ui.div(
             ui.card(
                 ui.div(
-                    ui.h4("Best Fit Model", style="color: lightgreen;"),
+                    ui.h4("Best Fit Model", style="color: darkgreen;"),
                     ui.p(f"Model: **{name}**"),
                     ui.p(f"Observed counts: {obs}"),
                     ui.p(f"Expected counts: {[round(e, 2) for e in exp]}"),
@@ -128,7 +127,7 @@ def server(input, output, session):
             ui.output_plot("bar_plot"),
             ui.card(
                 ui.div(
-                    ui.h4("Model Interpretation", style="color: lightgreen;"),
+                    ui.h4("Model Interpretation", style="color: darkgreen;"),
                     ui.markdown(MODEL_INTERPRETATIONS.get(name, "No interpretation available for this model."))
                 ),
                 style="box-shadow: 2px 2px 10px #ccc; padding: 1rem; margin-top: 1rem;"
