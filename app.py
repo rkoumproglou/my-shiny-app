@@ -18,6 +18,20 @@ MENDELIAN_MODELS = {
     "9:6:1": [9, 6, 1]
 }
 
+# Interpretation text for each model
+MODEL_INTERPRETATIONS = {
+    "3:1": "This pattern suggests a single gene with a dominant and recessive allele. One phenotype appears three times as often as the other, indicating classic Mendelian dominance.",
+    "1:2:1": "This ratio indicates additive gene action in a monohybrid cross, where heterozygotes show an intermediate phenotype.",
+    "12:3:1": "Dominant epistasis occurs when a dominant allele at one locus masks the expression of alleles at another locus, resulting in fewer phenotypic categories than expected.",
+    "9:7": "This pattern is due to duplicate recessive epistasis, where both genes must have at least one dominant allele to produce a specific phenotype.",
+    "15:1": "This is the result of duplicate dominant epistasis. A dominant allele at either of two loci produces the same phenotype, making the unique phenotype very rare.",
+    "9:3:4": "Recessive epistasis involves one gene masking the expression of another, but only when it's homozygous recessive. This gives a characteristic 9:3:4 phenotypic distribution.",
+    "13:3": "This ratio reflects a dominant and recessive interaction, where one dominant allele inhibits the expression of the other gene, leading to suppression of one phenotype.",
+    "9:6:1": "This pattern, also known as polymeric gene interaction, shows additive effects of two genes producing a novel phenotype when both genes contribute equally.",
+    "1:1:1:1": "This suggests independent assortment of two genes with complete dominance, typically seen in a dihybrid test cross.",
+    "9:3:3:1": "A classic dihybrid Mendelian ratio involving two independently assorting genes with complete dominance."
+}
+
 # Define UI
 app_ui = ui.page_fluid(
     ui.h2("Mendelian Ratio Chi-square Tester"),
@@ -115,16 +129,7 @@ def server(input, output, session):
             ui.card(
                 ui.div(
                     ui.h4("Model Interpretation", style="color: lightgreen;"),
-                    ui.markdown("""
-                    - **Recessive epistasis (9:3:4)**
-                    - **Dominant epistasis (12:3:1)**
-                    - **Dominant and recessive (inhibitory) epistasis (13:3)**
-                    - **Duplicate recessive epistasis (9:7)**
-                    - **Duplicate dominant epistasis (15:1)**
-                    - **Polymeric gene interaction (9:6:1)**
-                    - **1:2:1 additive action** (one gene)
-                    - **3:1 one dominant gene** (one gene)
-                    """),
+                    ui.markdown(MODEL_INTERPRETATIONS.get(name, "No interpretation available for this model."))
                 ),
                 style="box-shadow: 2px 2px 10px #ccc; padding: 1rem; margin-top: 1rem;"
             )
