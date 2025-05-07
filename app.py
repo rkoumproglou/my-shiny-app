@@ -2,6 +2,7 @@ from shiny import App, ui, render, reactive
 import pandas as pd
 from collections import Counter
 from scipy.stats import chisquare
+import plotly.graph_objects as go
 
 # Define Mendelian models
 MENDELIAN_MODELS = {
@@ -55,7 +56,7 @@ def server(input, output, session):
         for name, ratio in matched_models().items():
             expected = sorted([total * r / sum(ratio) for r in ratio])
             observed = sorted([obs_counts.get(cat, 0) for cat in sorted_categories])
-            
+
             if len(observed) != len(expected):
                 continue
             chi2, p = chisquare(f_obs=observed, f_exp=expected)
@@ -71,17 +72,77 @@ def server(input, output, session):
 
         if not matched_models():
             return ui.p("❌ No Mendelian model matches the number of phenotypic categories.")
-        print(test_results())
+
         best = test_results()[0]
         name, chi2, p, obs, exp = best
-        return ui.div(
-            ui.h4("✔️ Best-Fitting Mendelian Model"),
-            ui.p(f"Model: **{name}**"),
-            ui.p(f"Observed counts: {obs}"),
-            ui.p(f"Expected counts: {[round(e, 2) for e in exp]}"),
-            ui.p(f"Chi-square statistic: {chi2:.4f}"),
-            ui.p(f"P-value: {p:.4f}")
+        categories = sorted(parsed_data().keys())
+
+        # Create bar plot
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=categories,
+            y=obs,
+            name="Observed",
+            marker_color="lightgreen"
+        ))
+        fig.add_trace(go.Bar(
+            x=categories,
+            y=exp,
+            name=f"Expected ({name})",
+            marker_color="darkgreen"
+        ))
+        fig.update_layout(
+            barmode="group",
+            title="Observed vs Expected Counts",
+            legend_title="Model Explanation",
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)"
         )
+
+        return ui.div(
+            ui.card(
+                ui.div(
+                    ui.h4("Best Fit Model", style="color: lightgreen;"),
+                    ui.p(f"Model: **{name}**"),
+                    ui.p(f"Observed counts: {obs}"),
+                    ui.p(f"Expected counts: {[round(e, 2) for e in exp]}"),
+                    ui.p(f"Chi-square statistic: {chi2:.4f}"),
+                    ui.p(f"P-value: {p:.4f}"),
+                ),
+                style="box-shadow: 2px 2px 10px #ccc; padding: 1rem;"
+            ),
+            ui.output_plot("bar_plot"),
+            ui.card(
+                ui.div(
+                    ui.h4("Model Interpretation", style="color: lightgreen;"),
+                    ui.markdown("""
+                    - **Recessive epistasis (9:3:4)**
+                    - **Dominant epistasis (12:3:1)**
+                    - **Dominant and recessive (inhibitory) epistasis (13:3)**
+                    - **Duplicate recessive epistasis (9:7)**
+                    - **Duplicate dominant epistasis (15:1)**
+                    - **Polymeric gene interaction (9:6:1)**
+                    - **1:2:1 additive action** (one gene)
+                    - **3:1 one dominant gene** (one gene)
+                    """),
+                ),
+                style="box-shadow: 2px 2px 10px #ccc; padding: 1rem; margin-top: 1rem;"
+            )
+        )
+
+    @output
+    @render.plot
+    def bar_plot():
+        if not test_results():
+            return None
+        name, _, _, obs, exp = test_results()[0]
+        categories = sorted(parsed_data().keys())
+        df = pd.DataFrame({
+            "Category": categories,
+            "Observed": obs,
+            "Expected": exp
+        })
+        return df.plot.bar(x="Category", color=["lightgreen", "darkgreen"], rot=0).get_figure()
 
 # Create and run the app
 app = App(app_ui, server)
