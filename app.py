@@ -120,8 +120,7 @@ def server(input, output, session):
             yaxis_title="Counts"
         )
 
-        return ui.div(
-            ui.output_text("rachil koumproglou"),
+        return ui.div(  
             ui.card(
                 ui.div(
                     ui.h4("Best Fit Model", style="color: darkgreen;"),
