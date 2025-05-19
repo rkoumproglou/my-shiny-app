@@ -116,7 +116,12 @@ def server(input, output, session):
             title="Observed vs Expected Counts",
             legend_title="Model Explanation",
             plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)"
+            paper_bgcolor="rgba(0,0,0,0)",
+            yaxis=dict(
+                title=dict(
+                    text="Counts"
+                )
+            )
         )
 
         return ui.div(
