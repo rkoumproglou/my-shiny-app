@@ -1,4 +1,4 @@
-from shiny import App, ui, render, reactive
+ from shiny import App, ui, render, reactive
 import pandas as pd
 from collections import Counter
 from scipy.stats import chisquare
@@ -121,6 +121,7 @@ def server(input, output, session):
         )
 
         return ui.div(
+            ui.output_text("rachil koumproglou"),
             ui.card(
                 ui.div(
                     ui.h4("Best Fit Model", style="color: darkgreen;"),
