@@ -35,10 +35,17 @@ MODEL_INTERPRETATIONS = {
 # Define UI
 app_ui = ui.page_fluid(
     ui.h2("Mendelian Ratio Chi-square Tester"),
-    ui.markdown("**Paste your phenotypic data (one value per line):**"),
-    ui.input_text_area("phenodata", "", rows=15),
-    ui.hr(),
-    ui.output_ui("result_ui")
+    ui.layout_columns(
+        ui.card(
+            ui.markdown("**Paste your phenotypic data (one value per line):**"),
+            ui.input_text_area("phenodata", "", rows=15),
+        ),
+        #ui.hr(),
+        ui.card(
+            ui.output_ui("result_ui"),
+        ),
+        col_widths=(6,6)
+    )
 )
 
 # Define server logic
