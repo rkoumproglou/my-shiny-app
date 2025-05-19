@@ -44,7 +44,7 @@ app_ui = ui.page_fluid(
         ui.card(
             ui.output_ui("result_ui"),
         ),
-        col_widths=(6,6)
+        col_widths=(3,9)
     )
 )
 
