@@ -1,4 +1,4 @@
- from shiny import App, ui, render, reactive
+from shiny import App, ui, render, reactive
 import pandas as pd
 from collections import Counter
 from scipy.stats import chisquare
