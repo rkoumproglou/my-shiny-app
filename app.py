@@ -131,14 +131,14 @@ def server(input, output, session):
                 ),
                 style="box-shadow: 2px 2px 10px #ccc; padding: 1rem;"
             ),
-            ui.output_plot("bar_plot"),
             ui.card(
                 ui.div(
                     ui.h4("Model Interpretation", style="color: darkgreen;"),
                     ui.markdown(MODEL_INTERPRETATIONS.get(name, "No interpretation available for this model."))
                 ),
                 style="box-shadow: 2px 2px 10px #ccc; padding: 1rem; margin-top: 1rem;"
-            )
+            ),
+            ui.output_plot("bar_plot"),
         )
 
     @output
