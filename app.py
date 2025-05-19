@@ -117,7 +117,7 @@ def server(input, output, session):
             legend_title="Model Explanation",
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
-            yaxis_title"Counts"
+            yaxis_title="Counts"
         )
 
         return ui.div(
