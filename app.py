@@ -3,6 +3,7 @@ import pandas as pd
 from collections import Counter
 from scipy.stats import chisquare
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
 # Define Mendelian models
 MENDELIAN_MODELS = {
@@ -34,18 +35,40 @@ MODEL_INTERPRETATIONS = {
 
 # Define UI
 app_ui = ui.page_fluid(
-    ui.h2("Mendelian Ratio Chi-square Tester"),
+    ui.tags.style(
+        """
+        .card-shadow {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            padding: 1rem;
+            border-radius: 8px;
+            height: 100%;  /* helps consistent height if needed */
+        }
+        .column-top-align {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+        """
+    ),
+    ui.h2("Mendelian Ratio Chi-square Tester", style="text-align: center; font-weight: bold;"),
+    ui.div(
+        ui.br(),
+        ui.markdown("*Paste your phenotypic data (one value per line):*"),
+        ui.input_text_area("phenodata", "", rows=5),
+    ),
+    ui.br(),
+    ui.output_ui('results_title'),
+    ui.br(),
     ui.layout_columns(
-        ui.card(
-            ui.markdown("**Paste your phenotypic data (one value per line):**"),
-            ui.input_text_area("phenodata", "", rows=15),
-        ),
-        #ui.hr(),
-        ui.card(
-            ui.output_ui("result_ui"),
-        ),
-        col_widths=(3,9)
-    )
+        # ui.div(
+        #     ui.markdown("**Paste your phenotypic data (one value per line):**"),
+        #     ui.input_text_area("phenodata", "", rows=5),
+        # ),
+        ui.output_ui('best_model'),
+        ui.output_ui('interpretation'),
+        col_widths=(5,7)
+    ),
+    ui.output_plot('bar_plot'),
 )
 
 # Define server logic
@@ -85,62 +108,74 @@ def server(input, output, session):
 
         return sorted(results, key=lambda x: -x[2])
 
-    @output
+
+    @reactive.calc
+    def run_model():
+
+        best = test_results()[0]
+        name, chi2, p, obs, exp = best
+
+        return name, chi2, p, obs, exp
+        
+    
     @render.ui
-    def result_ui():
+    def best_model():
+
         if not parsed_data():
-            return ui.p("Paste data to begin.")
+            return "Paste data to begin."
 
         if not matched_models():
             return ui.p("❌ No Mendelian model matches the number of phenotypic categories.")
 
-        best = test_results()[0]
-        name, chi2, p, obs, exp = best
+        name, chi2, p, obs, exp = run_model()
         categories = sorted(parsed_data().keys())
+        
+        return ui.div(
+                    ui.card(
+                        ui.h4("Best Fit Model", style="color: darkgreen;"),
+                        ui.p(f"Model: **{name}**"),
+                        ui.p(f"Observed counts: {obs}"),
+                        ui.p(f"Expected counts: {[round(e, 2) for e in exp]}"),
+                        ui.p(f"Chi-square statistic: {chi2:.4f}"),
+                        ui.p(f"P-value: {p:.4f}"),
+                        class_="card-shadow"
+                    ),
+                    class_="column-top-align"
+                    # style="width: 200px; height: 300px;"
+                )
 
-        fig = go.Figure()
-        fig.add_trace(go.Bar(
-            x=categories,
-            y=obs,
-            name="Observed",
-            marker_color="lightgreen"
-        ))
-        fig.add_trace(go.Bar(
-            x=categories,
-            y=exp,
-            name=f"Expected ({name})",
-            marker_color="darkgreen"
-        ))
-        fig.update_layout(
-            barmode="group",
-            title="Observed vs Expected Counts",
-            legend_title="Model Explanation",
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            yaxis_title="Counts"
-        )
 
-        return ui.div(  
-            ui.card(
-                ui.div(
-                    ui.h4("Best Fit Model", style="color: darkgreen;"),
-                    ui.p(f"Model: **{name}**"),
-                    ui.p(f"Observed counts: {obs}"),
-                    ui.p(f"Expected counts: {[round(e, 2) for e in exp]}"),
-                    ui.p(f"Chi-square statistic: {chi2:.4f}"),
-                    ui.p(f"P-value: {p:.4f}"),
-                ),
-                style="box-shadow: 2px 2px 10px #ccc; padding: 1rem;"
-            ),
-            ui.card(
-                ui.div(
-                    ui.h4("Model Interpretation", style="color: darkgreen;"),
-                    ui.markdown(MODEL_INTERPRETATIONS.get(name, "No interpretation available for this model."))
-                ),
-                style="box-shadow: 2px 2px 10px #ccc; padding: 1rem; margin-top: 1rem;"
-            ),
-            ui.output_plot("bar_plot"),
-        )
+    @render.ui
+    def interpretation():
+
+        if not test_results():
+            return None
+        name, chi2, _, obs, exp = test_results()[0]
+        categories = sorted(parsed_data().keys())
+        
+        return ui.div(
+                    ui.br(),
+                    ui.br(),
+                    ui.card(
+                        ui.h4("Model Interpretation", style="color: darkgreen;"),
+                        ui.markdown(MODEL_INTERPRETATIONS.get(name, "No interpretation available for this model.")),
+                        class_="card-shadow",
+                    ),
+                    class_="column-top-align",
+                    # style="box-shadow: 2px 2px 10px #ccc; padding: 1rem; margin-top: 1rem;"
+                )
+
+    @render.ui
+    def results_title():
+
+        if not parsed_data():
+            return None
+
+        return ui.layout_columns(
+                    ui.br(),
+                    ui.markdown("**<span style='color:darkgreen; font-size:24px;'>Model Analysis Results</span>**"),
+                    ui.br()
+                )
 
     @output
     @render.plot
