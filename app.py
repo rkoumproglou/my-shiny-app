@@ -173,7 +173,7 @@ def server(input, output, session):
 
         return ui.layout_columns(
                     ui.br(),
-                    ui.markdown("**<span style='color:darkgreen; font-size:24px;'>Model Analysis Results</span>**"),
+                    ui.markdown("**<span style='color:darkgreen; font-size:24px;'> Analysis Results</span>**"),
                     ui.br()
                 )
 
