@@ -122,7 +122,7 @@ def server(input, output, session):
     def best_model():
 
         if not parsed_data():
-            return "Paste data to begin."
+            return None
 
         if not matched_models():
             return ui.p("❌ No Mendelian model matches the number of phenotypic categories.")
